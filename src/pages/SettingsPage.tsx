@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Upload, Plus, Trash2, ChevronDown, ChevronRight, UserX } from 'lucide-react';
+import { Upload, Plus, Trash2, ChevronDown, ChevronRight, UserX, Pencil } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-    const { classes, students, addClass, addStudentsFromCSV, deleteClass, deleteStudent, deleteStudents } = useAppContext();
+    const { classes, students, addClass, updateClass, addStudentsFromCSV, deleteClass, deleteStudent, deleteStudents } = useAppContext();
     const [newClassName, setNewClassName] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
     const [csvFile, setCsvFile] = useState<File | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
+    const [editingClassId, setEditingClassId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
 
     // State for selected students for bulk deletion (Set of IDs)
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -79,6 +81,27 @@ const SettingsPage: React.FC = () => {
             setMessage({ type: 'success', text: 'Alunos excluídos.' });
             setTimeout(() => setMessage(null), 3000);
         }
+    };
+
+    const handleStartEdit = (e: React.MouseEvent, id: string, currentName: string) => {
+        e.stopPropagation();
+        setEditingClassId(id);
+        setEditName(currentName);
+    };
+
+    const handleSaveEdit = (id: string) => {
+        if (editName.trim()) {
+            updateClass(id, editName.trim());
+            setEditingClassId(null);
+            setEditName('');
+            setMessage({ type: 'success', text: 'Nome da turma atualizado.' });
+            setTimeout(() => setMessage(null), 3000);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingClassId(null);
+        setEditName('');
     };
 
     const handleFileUpload = async (e: React.FormEvent) => {
@@ -209,7 +232,7 @@ const SettingsPage: React.FC = () => {
                             onChange={(e) => setNewClassName(e.target.value)}
                         />
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Criar Turma</button>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '1rem' }}>Criar Turma</button>
                 </form>
             </div>
 
@@ -217,7 +240,7 @@ const SettingsPage: React.FC = () => {
                 <h3 style={{ marginBottom: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                     <Upload size={20} /> Importar Alunos
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)', lineHeight: '1.5' }}>
                     Faça upload de um arquivo CSV. O app identificará automaticamente a coluna "Nome do Aluno".
                 </p>
                 <form onSubmit={handleFileUpload}>
@@ -240,10 +263,11 @@ const SettingsPage: React.FC = () => {
                             type="file"
                             accept=".csv"
                             className="input"
+                            style={{ padding: 'var(--spacing-sm)' }}
                             onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                         />
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '1rem' }}>
                         Importar Alunos
                     </button>
                 </form>
@@ -256,37 +280,85 @@ const SettingsPage: React.FC = () => {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                         {classes.map(cls => (
-                            <div key={cls.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                            <div key={cls.id} style={{
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-md)',
+                                overflow: 'hidden'
+                            }}>
                                 <div style={{
-                                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                                    padding: 'var(--spacing-md)',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     background: '#f8fafc',
-                                    borderRadius: 'var(--radius-md)'
                                 }}>
-                                    <div
-                                        onClick={() => toggleExpandClass(cls.id)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer', flex: 1 }}
-                                    >
-                                        {expandedClassId === cls.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                        <span style={{ fontWeight: 500 }}>{cls.name}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            ({students.filter(s => s.classId === cls.id).length} alunos)
-                                        </span>
-                                    </div>
-                                    <button
-                                        onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
-                                        className="btn-icon"
-                                        style={{ color: 'var(--danger)' }}
-                                        title="Excluir Turma"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    {editingClassId === cls.id ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flex: 1, paddingRight: 'var(--spacing-sm)' }} onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="text"
+                                                className="input"
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                autoFocus
+                                                style={{ padding: '6px 12px', height: 'auto', fontSize: '1rem' }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleSaveEdit(cls.id);
+                                                    if (e.key === 'Escape') handleCancelEdit();
+                                                }}
+                                            />
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button
+                                                    onClick={() => handleSaveEdit(cls.id)}
+                                                    className="btn btn-primary"
+                                                    style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                                                >
+                                                    Salvar
+                                                </button>
+                                                <button
+                                                    onClick={handleCancelEdit}
+                                                    className="btn"
+                                                    style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#ddd', color: '#333' }}
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div
+                                                onClick={() => toggleExpandClass(cls.id)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer', flex: 1 }}
+                                            >
+                                                {expandedClassId === cls.id ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                                <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>{cls.name}</span>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                                                    ({students.filter(s => s.classId === cls.id).length} alunos)
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button
+                                                    onClick={(e) => handleStartEdit(e, cls.id, cls.name)}
+                                                    className="btn-icon"
+                                                    style={{ color: 'var(--text-secondary)' }}
+                                                    title="Editar Nome da Turma"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteClass(e, cls.id, cls.name)}
+                                                    className="btn-icon"
+                                                    style={{ color: 'var(--danger)' }}
+                                                    title="Excluir Turma"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {expandedClassId === cls.id && (
-                                    <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ padding: 'var(--spacing-md)', background: 'white' }}>
                                         {students.filter(s => s.classId === cls.id).length === 0 ? (
                                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Nenhum aluno nesta turma.</p>
                                         ) : (
@@ -295,61 +367,63 @@ const SettingsPage: React.FC = () => {
                                                     display: 'flex',
                                                     justifyContent: 'space-between',
                                                     alignItems: 'center',
-                                                    marginBottom: 'var(--spacing-sm)',
+                                                    marginBottom: 'var(--spacing-md)',
                                                     paddingBottom: 'var(--spacing-sm)',
                                                     borderBottom: '1px solid var(--border-color)'
                                                 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedStudentIds.size === students.filter(s => s.classId === cls.id).length && students.filter(s => s.classId === cls.id).length > 0}
                                                             onChange={() => handleSelectAll(cls.id)}
-                                                            style={{ width: '18px', height: '18px' }}
+                                                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
                                                         />
-                                                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Selecionar Todos</span>
+                                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Selecionar Todos</span>
                                                     </div>
                                                     {selectedStudentIds.size > 0 && (
                                                         <button
                                                             onClick={handleBulkDelete}
+                                                            className="btn"
                                                             style={{
-                                                                color: 'var(--danger)',
-                                                                fontSize: '0.875rem',
+                                                                color: '#991b1b',
+                                                                fontSize: '0.85rem',
                                                                 fontWeight: 600,
                                                                 background: '#fee2e2',
-                                                                padding: '4px 12px',
-                                                                borderRadius: 'var(--radius-full)',
-                                                                border: 'none',
-                                                                cursor: 'pointer'
+                                                                padding: '6px 14px',
                                                             }}
                                                         >
-                                                            Excluir Selecionados ({selectedStudentIds.size})
+                                                            Excluir ({selectedStudentIds.size})
                                                         </button>
                                                     )}
                                                 </div>
-                                                <ul style={{ listStyle: 'none' }}>
+                                                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                     {students.filter(s => s.classId === cls.id).map(student => (
                                                         <li key={student.id} style={{
                                                             display: 'flex',
                                                             justifyContent: 'space-between',
                                                             alignItems: 'center',
-                                                            padding: 'var(--spacing-xs) 0',
-                                                            fontSize: '0.875rem'
+                                                            padding: '8px 12px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '0.95rem',
+                                                            backgroundColor: selectedStudentIds.has(student.id) ? '#F3F4F6' : 'transparent',
+                                                            transition: 'background 0.2s'
                                                         }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedStudentIds.has(student.id)}
                                                                     onChange={() => handleToggleSelectStudent(student.id)}
-                                                                    style={{ width: '16px', height: '16px' }}
+                                                                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
                                                                 />
                                                                 <span>{student.name}</span>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleDeleteStudent(student.id, student.name)}
-                                                                style={{ color: 'var(--danger)', background: 'none', padding: '4px' }}
+                                                                className="btn-icon"
+                                                                style={{ color: '#ef4444', padding: '6px' }}
                                                                 title="Remover Aluno"
                                                             >
-                                                                <UserX size={16} />
+                                                                <UserX size={18} />
                                                             </button>
                                                         </li>
                                                     ))}

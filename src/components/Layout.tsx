@@ -11,27 +11,27 @@ const Layout: React.FC = () => {
         <div className="container">
             <header className="page-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                    <GraduationCap size={32} color="var(--primary)" />
-                    <h1 style={{ fontSize: '1.25rem' }}>Attendance</h1>
+                    <GraduationCap size={28} color="var(--primary)" />
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Attendance</h1>
                 </div>
-                <nav style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                <nav style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
                     <Link
                         to="/"
                         className={`btn btn-icon ${isActive('/') ? 'active' : ''}`}
-                        style={{ color: isActive('/') ? 'var(--primary)' : 'var(--text-secondary)' }}
+                        title="Início"
                     >
-                        <Home />
+                        <Home size={24} strokeWidth={isActive('/') ? 3 : 2} />
                     </Link>
                     <Link
                         to="/settings"
                         className={`btn btn-icon ${isActive('/settings') ? 'active' : ''}`}
-                        style={{ color: isActive('/settings') ? 'var(--primary)' : 'var(--text-secondary)' }}
+                        title="Configurações"
                     >
-                        <Settings />
+                        <Settings size={24} strokeWidth={isActive('/settings') ? 3 : 2} />
                     </Link>
                 </nav>
             </header>
-            <main style={{ flex: 1 }}>
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Outlet />
             </main>
         </div>

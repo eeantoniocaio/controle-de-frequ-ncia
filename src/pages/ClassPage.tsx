@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { ChevronLeft, Calendar as CalendarIcon, Check, X } from 'lucide-react';
+import { ChevronLeft, Calendar as CalendarIcon, Check, X, Plus } from 'lucide-react';
 
 const ClassPage: React.FC = () => {
     const { classId } = useParams<{ classId: string }>();
-    const { classes, students, getAttendanceForDate, toggleAttendance } = useAppContext();
+    const { classes, students, getAttendanceForDate, toggleAttendance, addStudent } = useAppContext();
 
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -45,40 +45,25 @@ const ClassPage: React.FC = () => {
                 </div>
             </header>
 
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: 'transparent', boxShadow: 'none' }}>
                 {classStudents.length === 0 ? (
-                    <div style={{ padding: 'var(--spacing-lg)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <div className="card" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                         Nenhum aluno nesta turma ainda. Vá em Configurações para adicionar alunos.
                     </div>
                 ) : (
-                    <div>
-                        <div style={{
-                            padding: 'var(--spacing-md)',
-                            background: '#f8fafc',
-                            borderBottom: '1px solid var(--border-color)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            color: 'var(--text-secondary)',
-                            letterSpacing: '0.05em'
-                        }}>
-                            <span>Nome do Aluno</span>
-                            <span>Situação</span>
-                        </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                         {classStudents.map((student) => {
                             const isPresent = getStatus(student.id);
                             return (
-                                <div key={student.id} style={{
+                                <div key={student.id} className="card" style={{
                                     padding: 'var(--spacing-md)',
-                                    borderBottom: '1px solid var(--border-color)',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    background: isPresent ? 'white' : '#fef2f2' // Light red bg if absent
+                                    boxShadow: '0 4px 20px -5px rgba(0,0,0,0.05)',
+                                    marginBottom: 0
                                 }}>
-                                    <span style={{ fontWeight: 500, color: isPresent ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '1rem' }}>
                                         {student.name}
                                     </span>
 
@@ -86,25 +71,19 @@ const ClassPage: React.FC = () => {
                                         onClick={() => toggleAttendance(currentClass.id, student.id, date)}
                                         className="btn"
                                         style={{
-                                            padding: '6px 12px',
-                                            borderRadius: 'var(--radius-full)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            backgroundColor: isPresent ? '#dcfce7' : '#fee2e2',
-                                            color: isPresent ? '#166534' : '#991b1b',
-                                            border: `1px solid ${isPresent ? '#bbf7d0' : '#fecaca'}`,
-                                            minWidth: '100px',
-                                            justifyContent: 'center'
+                                            padding: '8px 16px',
+                                            backgroundColor: isPresent ? 'var(--accent-green)' : '#fee2e2',
+                                            color: isPresent ? '#064e3b' : '#991b1b',
+                                            minWidth: '110px'
                                         }}
                                     >
                                         {isPresent ? (
                                             <>
-                                                <Check size={16} /> Presente
+                                                <Check size={18} strokeWidth={2.5} /> Presente
                                             </>
                                         ) : (
                                             <>
-                                                <X size={16} /> Ausente
+                                                <X size={18} strokeWidth={2.5} /> Ausente
                                             </>
                                         )}
                                     </button>
@@ -113,6 +92,26 @@ const ClassPage: React.FC = () => {
                         })}
                     </div>
                 )}
+            </div>
+
+            {/* Quick Add Student Section */}
+            <div className="card" style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <Plus size={20} color="var(--text-secondary)" />
+                <input
+                    type="text"
+                    placeholder="Adicionar novo aluno..."
+                    className="input"
+                    style={{ border: 'none', padding: '0', boxShadow: 'none', background: 'transparent' }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            const target = e.currentTarget;
+                            if (target.value.trim()) {
+                                addStudent(classId!, target.value.trim());
+                                target.value = '';
+                            }
+                        }
+                    }}
+                />
             </div>
         </div>
     );

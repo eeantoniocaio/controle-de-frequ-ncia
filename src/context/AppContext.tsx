@@ -6,6 +6,8 @@ interface AppContextType {
     students: Student[];
     attendance: AttendanceRecord[];
     addClass: (name: string) => void;
+    updateClass: (id: string, newName: string) => void;
+    addStudent: (classId: string, name: string) => void;
     addStudentsFromCSV: (classId: string, studentNames: string[]) => void;
     toggleAttendance: (classId: string, studentId: string, date: string) => void;
     getAttendanceForDate: (classId: string, date: string) => AttendanceRecord | undefined;
@@ -52,6 +54,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setClasses([...classes, newClass]);
     };
 
+    const updateClass = (id: string, newName: string) => {
+        setClasses(prev => prev.map(c =>
+            c.id === id ? { ...c, name: newName } : c
+        ));
+    };
+
     const addStudentsFromCSV = (classId: string, studentNames: string[]) => {
         const newStudents: Student[] = studentNames.map(name => ({
             id: crypto.randomUUID(),
@@ -59,6 +67,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             classId,
         }));
         setStudents(prev => [...prev, ...newStudents]);
+    };
+
+    const addStudent = (classId: string, name: string) => {
+        const newStudent: Student = {
+            id: crypto.randomUUID(),
+            name: name.trim(),
+            classId,
+        };
+        setStudents(prev => [...prev, newStudent]);
     };
 
     const toggleAttendance = (classId: string, studentId: string, date: string) => {
@@ -125,7 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     return (
-        <AppContext.Provider value={{ classes, students, attendance, addClass, addStudentsFromCSV, toggleAttendance, getAttendanceForDate, deleteClass, deleteStudent, deleteStudents }}>
+        <AppContext.Provider value={{ classes, students, attendance, addClass, updateClass, addStudent, addStudentsFromCSV, toggleAttendance, getAttendanceForDate, deleteClass, deleteStudent, deleteStudents }}>
             {children}
         </AppContext.Provider>
     );
