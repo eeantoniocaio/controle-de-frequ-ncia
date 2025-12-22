@@ -5,9 +5,20 @@ import { ChevronLeft, Calendar as CalendarIcon, Check, X, Plus } from 'lucide-re
 
 const ClassPage: React.FC = () => {
     const { classId } = useParams<{ classId: string }>();
-    const { classes, students, getAttendanceForDate, toggleAttendance, addStudent } = useAppContext();
+    const { classes, students, getAttendanceForDate, toggleAttendance, addStudent, loading } = useAppContext();
 
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+    if (loading) {
+        return (
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div className="spinner" style={{ marginBottom: 'var(--spacing-md)' }}></div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Carregando dados da turma...</p>
+                </div>
+            </div>
+        );
+    }
 
     const currentClass = classes.find(c => c.id === classId);
     const classStudents = students.filter(s => s.classId === classId);

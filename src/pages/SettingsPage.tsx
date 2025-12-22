@@ -1,9 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Upload, Plus, Trash2, ChevronDown, ChevronRight, UserX, Pencil } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-    const { classes, students, addClass, updateClass, addStudentsFromCSV, deleteClass, deleteStudent, deleteStudents } = useAppContext();
+    const { classes, students, addClass, updateClass, addStudentsFromCSV, deleteClass, deleteStudent, deleteStudents, loading } = useAppContext();
+
+    if (loading) {
+        return (
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div className="spinner" style={{ marginBottom: 'var(--spacing-md)' }}></div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Carregando configurações...</p>
+                </div>
+            </div>
+        );
+    }
+
     const [newClassName, setNewClassName] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
     const [csvFile, setCsvFile] = useState<File | null>(null);

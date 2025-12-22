@@ -1,148 +1,228 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Class, Student, AttendanceRecord } from '../types';
+import { supabase } from '../supabase';
 
 interface AppContextType {
     classes: Class[];
     students: Student[];
     attendance: AttendanceRecord[];
-    addClass: (name: string) => void;
-    updateClass: (id: string, newName: string) => void;
-    addStudent: (classId: string, name: string) => void;
-    addStudentsFromCSV: (classId: string, studentNames: string[]) => void;
-    toggleAttendance: (classId: string, studentId: string, date: string) => void;
+    loading: boolean;
+    addClass: (name: string) => Promise<void>;
+    updateClass: (id: string, newName: string) => Promise<void>;
+    addStudent: (classId: string, name: string) => Promise<void>;
+    addStudentsFromCSV: (classId: string, studentNames: string[]) => Promise<void>;
+    toggleAttendance: (classId: string, studentId: string, date: string) => Promise<void>;
     getAttendanceForDate: (classId: string, date: string) => AttendanceRecord | undefined;
-    deleteClass: (classId: string) => void;
-    deleteStudent: (studentId: string) => void;
-    deleteStudents: (studentIds: string[]) => void;
+    deleteClass: (classId: string) => Promise<void>;
+    deleteStudent: (studentId: string) => Promise<void>;
+    deleteStudents: (studentIds: string[]) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [classes, setClasses] = useState<Class[]>(() => {
-        const saved = localStorage.getItem('classes');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [classes, setClasses] = useState<Class[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const [students, setStudents] = useState<Student[]>(() => {
-        const saved = localStorage.getItem('students');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [
+                { data: classesData },
+                { data: studentsData },
+                { data: attendanceData }
+            ] = await Promise.all([
+                supabase.from('classes').select('*').order('name'),
+                supabase.from('students').select('*').order('name'),
+                supabase.from('attendance').select('*')
+            ]);
 
-    const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
-        const saved = localStorage.getItem('attendance');
-        return saved ? JSON.parse(saved) : [];
-    });
+            if (classesData) setClasses(classesData);
+            if (studentsData) setStudents(studentsData);
+
+            if (attendanceData) {
+                // Group normalized DB attendance into aggregated frontend objects
+                const grouped: { [key: string]: AttendanceRecord } = {};
+                attendanceData.forEach(row => {
+                    const key = `${row.class_id}_${row.date}`;
+                    if (!grouped[key]) {
+                        grouped[key] = {
+                            date: row.date,
+                            classId: row.class_id,
+                            records: {}
+                        };
+                    }
+                    grouped[key].records[row.student_id] = row.present;
+                });
+                setAttendance(Object.values(grouped));
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        localStorage.setItem('classes', JSON.stringify(classes));
-    }, [classes]);
+        fetchData();
+    }, [fetchData]);
 
-    useEffect(() => {
-        localStorage.setItem('students', JSON.stringify(students));
-    }, [students]);
+    const addClass = async (name: string) => {
+        const { data, error } = await supabase
+            .from('classes')
+            .insert([{ name }])
+            .select()
+            .single();
 
-    useEffect(() => {
-        localStorage.setItem('attendance', JSON.stringify(attendance));
-    }, [attendance]);
-
-    const addClass = (name: string) => {
-        const newClass: Class = {
-            id: crypto.randomUUID(),
-            name,
-        };
-        setClasses([...classes, newClass]);
+        if (error) console.error('Error adding class:', error);
+        else if (data) setClasses(prev => [...prev, data]);
     };
 
-    const updateClass = (id: string, newName: string) => {
-        setClasses(prev => prev.map(c =>
-            c.id === id ? { ...c, name: newName } : c
-        ));
+    const updateClass = async (id: string, newName: string) => {
+        const { error } = await supabase
+            .from('classes')
+            .update({ name: newName })
+            .eq('id', id);
+
+        if (error) console.error('Error updating class:', error);
+        else {
+            setClasses(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
+        }
     };
 
-    const addStudentsFromCSV = (classId: string, studentNames: string[]) => {
-        const newStudents: Student[] = studentNames.map(name => ({
-            id: crypto.randomUUID(),
+    const addStudent = async (classId: string, name: string) => {
+        const { data, error } = await supabase
+            .from('students')
+            .insert([{ name: name.trim(), class_id: classId }])
+            .select()
+            .single();
+
+        if (error) console.error('Error adding student:', error);
+        else if (data) {
+            // Map DB snake_case to frontend camelCase
+            const mappedStudent: Student = { id: data.id, name: data.name, classId: data.class_id };
+            setStudents(prev => [...prev, mappedStudent]);
+        }
+    };
+
+    const addStudentsFromCSV = async (classId: string, studentNames: string[]) => {
+        const studentsToInsert = studentNames.map(name => ({
             name: name.trim(),
-            classId,
+            class_id: classId
         }));
-        setStudents(prev => [...prev, ...newStudents]);
+
+        const { data, error } = await supabase
+            .from('students')
+            .insert(studentsToInsert)
+            .select();
+
+        if (error) console.error('Error adding students:', error);
+        else if (data) {
+            const mapped = data.map(s => ({ id: s.id, name: s.name, classId: s.class_id }));
+            setStudents(prev => [...prev, ...mapped]);
+        }
     };
 
-    const addStudent = (classId: string, name: string) => {
-        const newStudent: Student = {
-            id: crypto.randomUUID(),
-            name: name.trim(),
-            classId,
-        };
-        setStudents(prev => [...prev, newStudent]);
-    };
+    const toggleAttendance = async (classId: string, studentId: string, date: string) => {
+        // 1. Calculate next status
+        const currentRecord = attendance.find(r => r.classId === classId && r.date === date);
+        const currentStatus = currentRecord?.records[studentId] ?? true; // Default to present
+        const nextStatus = !currentStatus;
 
-    const toggleAttendance = (classId: string, studentId: string, date: string) => {
+        // 2. Optimistic UI update (Immediate)
         setAttendance(prev => {
-            const existingRecordIndex = prev.findIndex(r => r.classId === classId && r.date === date);
-
-            if (existingRecordIndex >= 0) {
-                const updatedRecords = [...prev];
-                const record = updatedRecords[existingRecordIndex];
-
-                const currentStatus = record.records[studentId] ?? true;
-
-                updatedRecords[existingRecordIndex] = {
-                    ...record,
-                    records: {
-                        ...record.records,
-                        [studentId]: !currentStatus
-                    }
+            const index = prev.findIndex(r => r.classId === classId && r.date === date);
+            if (index >= 0) {
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    records: { ...updated[index].records, [studentId]: nextStatus }
                 };
-                return updatedRecords;
+                return updated;
             } else {
-                return [...prev, {
-                    date,
-                    classId,
-                    records: {
-                        [studentId]: false
-                    }
-                }];
+                return [...prev, { date, classId, records: { [studentId]: nextStatus } }];
             }
         });
+
+        // 3. Background Sync with Supabase
+        const { error } = await supabase
+            .from('attendance')
+            .upsert({
+                class_id: classId,
+                student_id: studentId,
+                date,
+                present: nextStatus
+            }, {
+                onConflict: 'class_id,student_id,date'
+            });
+
+        if (error) {
+            console.error('Error toggling attendance:', error);
+            // Rollback optimistic update if error occurs
+            setAttendance(prev => {
+                const index = prev.findIndex(r => r.classId === classId && r.date === date);
+                if (index >= 0) {
+                    const updated = [...prev];
+                    updated[index] = {
+                        ...updated[index],
+                        records: { ...updated[index].records, [studentId]: currentStatus }
+                    };
+                    return updated;
+                }
+                return prev;
+            });
+        }
     };
 
     const getAttendanceForDate = (classId: string, date: string) => {
         return attendance.find(r => r.classId === classId && r.date === date);
     };
 
-    const deleteClass = (classId: string) => {
-        setClasses(prev => prev.filter(c => c.id !== classId));
-        // Remove students associated with this class
-        setStudents(prev => prev.filter(s => s.classId !== classId));
-        // Remove attendance records for this class
-        setAttendance(prev => prev.filter(a => a.classId !== classId));
+    const deleteClass = async (classId: string) => {
+        const { error } = await supabase.from('classes').delete().eq('id', classId);
+        if (error) console.error('Error deleting class:', error);
+        else {
+            setClasses(prev => prev.filter(c => c.id !== classId));
+            setStudents(prev => prev.filter(s => s.classId !== classId));
+            setAttendance(prev => prev.filter(a => a.classId !== classId));
+        }
     };
 
-    const deleteStudent = (studentId: string) => {
-        setStudents(prev => prev.filter(s => s.id !== studentId));
-        // Clean up student from attendance records
-        setAttendance(prev => prev.map(record => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { [studentId]: _, ...rest } = record.records;
-            return { ...record, records: rest };
-        }));
+    const deleteStudent = async (studentId: string) => {
+        const { error } = await supabase.from('students').delete().eq('id', studentId);
+        if (error) console.error('Error deleting student:', error);
+        else {
+            setStudents(prev => prev.filter(s => s.id !== studentId));
+            setAttendance(prev => prev.map(record => {
+                const { [studentId]: _, ...rest } = record.records;
+                return { ...record, records: rest };
+            }));
+        }
     };
 
-    const deleteStudents = (studentIds: string[]) => {
-        const idsSet = new Set(studentIds);
-        setStudents(prev => prev.filter(s => !idsSet.has(s.id)));
-
-        setAttendance(prev => prev.map(record => {
-            const newRecords = { ...record.records };
-            studentIds.forEach(id => delete newRecords[id]);
-            return { ...record, records: newRecords };
-        }));
+    const deleteStudents = async (studentIds: string[]) => {
+        const { error } = await supabase.from('students').delete().in('id', studentIds);
+        if (error) console.error('Error deleting students:', error);
+        else {
+            const idsSet = new Set(studentIds);
+            setStudents(prev => prev.filter(s => !idsSet.has(s.id)));
+            setAttendance(prev => prev.map(record => {
+                const newRecords = { ...record.records };
+                studentIds.forEach(id => delete newRecords[id]);
+                return { ...record, records: newRecords };
+            }));
+        }
     };
 
     return (
-        <AppContext.Provider value={{ classes, students, attendance, addClass, updateClass, addStudent, addStudentsFromCSV, toggleAttendance, getAttendanceForDate, deleteClass, deleteStudent, deleteStudents }}>
+        <AppContext.Provider value={{
+            classes, students, attendance, loading,
+            addClass, updateClass, addStudent, addStudentsFromCSV,
+            toggleAttendance, getAttendanceForDate,
+            deleteClass, deleteStudent, deleteStudents
+        }}>
             {children}
         </AppContext.Provider>
     );

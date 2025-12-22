@@ -4,7 +4,18 @@ import { useAppContext } from '../context/AppContext';
 import { Users, ChevronRight } from 'lucide-react';
 
 const HomePage: React.FC = () => {
-    const { classes, students } = useAppContext();
+    const { classes, students, loading } = useAppContext();
+
+    if (loading) {
+        return (
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div className="spinner" style={{ marginBottom: 'var(--spacing-md)' }}></div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Carregando turmas...</p>
+                </div>
+            </div>
+        );
+    }
 
     const getStudentCount = (classId: string) => {
         return students.filter(s => s.classId === classId).length;
