@@ -40,7 +40,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ]);
 
             if (classesData) setClasses(classesData);
-            if (studentsData) setStudents(studentsData);
+            if (studentsData) {
+                // Map DB snake_case to frontend camelCase
+                const mappedStudents = studentsData.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    classId: s.class_id
+                }));
+                setStudents(mappedStudents);
+            }
 
             if (attendanceData) {
                 // Group normalized DB attendance into aggregated frontend objects
@@ -93,9 +101,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addStudent = async (classId: string, name: string) => {
+        const sanitizedName = name.trim();
+
+        // Prevent duplicates
+        const exists = students.some(s => s.classId === classId && s.name.toLowerCase() === sanitizedName.toLowerCase());
+        if (exists) {
+            console.warn(`Student "${sanitizedName}" already exists in this class.`);
+            return;
+        }
+
         const { data, error } = await supabase
             .from('students')
-            .insert([{ name: name.trim(), class_id: classId }])
+            .insert([{ name: sanitizedName, class_id: classId }])
             .select()
             .single();
 
@@ -108,8 +125,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addStudentsFromCSV = async (classId: string, studentNames: string[]) => {
-        const studentsToInsert = studentNames.map(name => ({
-            name: name.trim(),
+        // Get existing names in this class to filtered them out
+        const existingNames = new Set(
+            students
+                .filter(s => s.classId === classId)
+                .map(s => s.name.toLowerCase())
+        );
+
+        const uniqueNames = [...new Set(studentNames.map(n => n.trim()))]
+            .filter(name => name && !existingNames.has(name.toLowerCase()));
+
+        if (uniqueNames.length === 0) {
+            console.warn('No new students to add.');
+            return;
+        }
+
+        const studentsToInsert = uniqueNames.map(name => ({
+            name,
             class_id: classId
         }));
 
