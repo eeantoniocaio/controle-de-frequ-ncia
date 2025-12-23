@@ -231,3 +231,34 @@ select {
   animation: spin 1s linear infinite;
   margin: 0 auto;
 }
+/* Interactive List Items (Selection) */
+.list-item-interactive {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px !important;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  background-color: transparent;
+  width: 100%;
+}
+
+.list-item-interactive:hover {
+  background-color: #f1f5f9;
+}
+
+.list-item-interactive.selected {
+  background-color: #f0f7ff;
+}
+
+.list-item-interactive:active {
+  transform: scale(0.99);
+}
+
+.list-item-interactive input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}

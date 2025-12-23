@@ -75,13 +75,17 @@ const SettingsPage: React.FC = () => {
 
     const handleSelectAll = (clsId: string) => {
         const classStudents = students.filter(s => s.classId === clsId);
-        if (selectedStudentIds.size === classStudents.length) {
-            // Deselect all
-            setSelectedStudentIds(new Set());
+        const classStudentIds = classStudents.map(s => s.id);
+
+        const allSelected = classStudentIds.length > 0 && classStudentIds.every(id => selectedStudentIds.has(id));
+
+        const newSelected = new Set(selectedStudentIds);
+        if (allSelected) {
+            classStudentIds.forEach(id => newSelected.delete(id));
         } else {
-            // Select all
-            setSelectedStudentIds(new Set(classStudents.map(s => s.id)));
+            classStudentIds.forEach(id => newSelected.add(id));
         }
+        setSelectedStudentIds(newSelected);
     };
 
     const handleBulkDelete = () => {
@@ -383,14 +387,21 @@ const SettingsPage: React.FC = () => {
                                                     paddingBottom: 'var(--spacing-sm)',
                                                     borderBottom: '1px solid var(--border-color)'
                                                 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedStudentIds.size === students.filter(s => s.classId === cls.id).length && students.filter(s => s.classId === cls.id).length > 0}
-                                                            onChange={() => handleSelectAll(cls.id)}
-                                                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
-                                                        />
-                                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Selecionar Todos</span>
+                                                    <div
+                                                        onClick={() => handleSelectAll(cls.id)}
+                                                        className={`list-item-interactive ${students.filter(s => s.classId === cls.id).length > 0 && students.filter(s => s.classId === cls.id).every(s => selectedStudentIds.has(s.id)) ? 'selected' : ''}`}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={students.filter(s => s.classId === cls.id).length > 0 && students.filter(s => s.classId === cls.id).every(s => selectedStudentIds.has(s.id))}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleSelectAll(cls.id);
+                                                                }}
+                                                            />
+                                                            <span style={{ fontSize: '1rem', fontWeight: 600 }}>Selecionar Todos</span>
+                                                        </div>
                                                     </div>
                                                     {selectedStudentIds.size > 0 && (
                                                         <button
@@ -410,32 +421,35 @@ const SettingsPage: React.FC = () => {
                                                 </div>
                                                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                     {students.filter(s => s.classId === cls.id).map(student => (
-                                                        <li key={student.id} style={{
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'center',
-                                                            padding: '8px 12px',
-                                                            borderRadius: '8px',
-                                                            fontSize: '0.95rem',
-                                                            backgroundColor: selectedStudentIds.has(student.id) ? '#F3F4F6' : 'transparent',
-                                                            transition: 'background 0.2s'
-                                                        }}>
+                                                        <li
+                                                            key={student.id}
+                                                            onClick={() => handleToggleSelectStudent(student.id)}
+                                                            className={`list-item-interactive ${selectedStudentIds.has(student.id) ? 'selected' : ''}`}
+                                                            style={{ marginBottom: '4px' }}
+                                                        >
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedStudentIds.has(student.id)}
-                                                                    onChange={() => handleToggleSelectStudent(student.id)}
-                                                                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                                                                    onChange={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleToggleSelectStudent(student.id);
+                                                                    }}
                                                                 />
-                                                                <span>{student.name}</span>
+                                                                <span style={{ fontWeight: selectedStudentIds.has(student.id) ? 600 : 400 }}>
+                                                                    {student.name}
+                                                                </span>
                                                             </div>
                                                             <button
-                                                                onClick={() => handleDeleteStudent(student.id, student.name)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteStudent(student.id, student.name);
+                                                                }}
                                                                 className="btn-icon"
-                                                                style={{ color: '#ef4444', padding: '6px' }}
+                                                                style={{ color: '#ef4444', padding: '8px' }}
                                                                 title="Remover Aluno"
                                                             >
-                                                                <UserX size={18} />
+                                                                <UserX size={20} />
                                                             </button>
                                                         </li>
                                                     ))}
