@@ -50,9 +50,17 @@ const HomePage: React.FC = () => {
                         boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
                     }}
                 >
-                    <FileText size={18} /> Relatórios
+                    <FileText size={18} /> <span className="hide-on-mobile">Relatórios</span>
                 </button>
             </header>
+
+            <style>{`
+                @media (max-width: 480px) {
+                    .hide-on-mobile {
+                        display: none;
+                    }
+                }
+            `}</style>
 
             {classes.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--text-secondary)' }}>
