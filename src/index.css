@@ -231,6 +231,7 @@ select {
   animation: spin 1s linear infinite;
   margin: 0 auto;
 }
+
 /* Interactive List Items (Selection) */
 .list-item-interactive {
   display: flex !important;
@@ -261,4 +262,10 @@ select {
   width: 20px;
   height: 20px;
   cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .hide-on-mobile {
+    display: none;
+  }
 }

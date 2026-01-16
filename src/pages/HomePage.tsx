@@ -43,7 +43,7 @@ const HomePage: React.FC = () => {
                         fontSize: '0.9rem',
                         backgroundColor: '#fff',
                         border: '1px solid #e2e8f0',
-                        color: 'var(--primary-color)',
+                        color: 'var(--primary)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
@@ -53,14 +53,6 @@ const HomePage: React.FC = () => {
                     <FileText size={18} /> <span className="hide-on-mobile">Relatórios</span>
                 </button>
             </header>
-
-            <style>{`
-                @media (max-width: 480px) {
-                    .hide-on-mobile {
-                        display: none;
-                    }
-                }
-            `}</style>
 
             {classes.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--text-secondary)' }}>
