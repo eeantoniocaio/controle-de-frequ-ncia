@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { Users, ChevronRight } from 'lucide-react';
+import { Users, ChevronRight, FileText } from 'lucide-react';
+import ReportModal from '../components/ReportModal';
 
 const HomePage: React.FC = () => {
     const { classes, students, loading } = useAppContext();
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
     if (loading) {
         return (
@@ -31,8 +33,25 @@ const HomePage: React.FC = () => {
 
     return (
         <div>
-            <header className="page-header" style={{ marginBottom: 'var(--spacing-md)' }}>
+            <header className="page-header" style={{ marginBottom: 'var(--spacing-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 className="page-title">Minhas Turmas</h2>
+                <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="btn"
+                    style={{
+                        padding: '8px 12px',
+                        fontSize: '0.9rem',
+                        backgroundColor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        color: 'var(--primary-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                    }}
+                >
+                    <FileText size={18} /> Relatórios
+                </button>
             </header>
 
             {classes.length === 0 ? (
@@ -94,6 +113,8 @@ const HomePage: React.FC = () => {
                     })}
                 </div>
             )}
+
+            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
         </div>
     );
 };

@@ -1,0 +1,36 @@
+name: Prevent Supabase Pause
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allows manual run
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Project
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          # If secrets are not set, it might fail. Ideally configure secrets in GitHub Repo Settings.
+          # Checking if secrets are available, otherwise using fallback (Not recommended for public repos)
+          
+          URL="${SUPABASE_URL:-'https://gdicuxrxdtvegfvgjroz.supabase.co'}"
+          KEY="${SUPABASE_KEY:-'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaWN1eHJ4ZHR2ZWdmdmdqcm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MTY4NzYsImV4cCI6MjA4MTk5Mjg3Nn0.KefFRDSD-0PGJEg_2ozzpfbzJXrfbIzKk0IY0UZwcpc'}"
+          
+          echo "Pinging Supabase at $URL..."
+          
+          # Simple GET request to a table (e.g., classes) with limit=1 just to create activity
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$URL/rest/v1/classes?select=id&limit=1" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+            
+          if [ "$response" -eq 200 ] || [ "$response" -eq 206 ]; then
+            echo "Success! Supabase responded with $response."
+          else
+            echo "Failed to ping Supabase. Status: $response"
+            exit 1
+          fi

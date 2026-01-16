@@ -27,13 +27,23 @@ const SettingsPage: React.FC = () => {
     // State for selected students for bulk deletion (Set of IDs)
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
-    const handleAddClass = (e: React.FormEvent) => {
+    const handleAddClass = async (e: React.FormEvent) => {
         e.preventDefault();
+        setMessage(null); // Clear previous messages
+
         if (newClassName.trim()) {
-            addClass(newClassName.trim());
-            setNewClassName('');
-            setMessage({ type: 'success', text: 'Turma criada com sucesso!' });
-            setTimeout(() => setMessage(null), 3000);
+            try {
+                await addClass(newClassName.trim());
+                setNewClassName('');
+                setMessage({ type: 'success', text: 'Turma criada com sucesso!' });
+                setTimeout(() => setMessage(null), 3000);
+            } catch (error: any) {
+                console.error(error);
+                setMessage({
+                    type: 'error',
+                    text: `Erro ao criar turma: ${error.message || 'Erro desconhecido'}`
+                });
+            }
         }
     };
 

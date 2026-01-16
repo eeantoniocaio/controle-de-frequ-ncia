@@ -84,8 +84,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .select()
             .single();
 
-        if (error) console.error('Error adding class:', error);
-        else if (data) setClasses(prev => [...prev, data]);
+        if (error) {
+            console.error('Error adding class:', error);
+            throw error;
+        }
+        else if (data) {
+            setClasses(prev => [...prev, data]);
+        }
     };
 
     const updateClass = async (id: string, newName: string) => {
