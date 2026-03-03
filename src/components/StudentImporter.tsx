@@ -50,7 +50,7 @@ const StudentImporter: React.FC<StudentImporterProps> = ({ classes, onImport }) 
             for (let i = startRow; i < lines.length; i++) {
                 const columns = lines[i].split(separator).map(c => c.trim());
                 if (columns.length > nameColIndex) {
-                    let name = columns[nameColIndex].replace(/^["']|["']$/g, '');
+                    const name = columns[nameColIndex].replace(/^["']|["']$/g, '');
                     if (name && name.length > 2 && isNaN(Number(name))) {
                         namesToImport.push(name);
                     }

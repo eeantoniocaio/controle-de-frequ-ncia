@@ -40,7 +40,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             if (classesData) setClasses(classesData as Class[]);
             if (studentsData) {
-                const mappedStudents = (studentsData as any[]).map(s => ({
+                const mappedStudents = (studentsData as Array<{ id: string; name: string; class_id: string }>).map(s => ({
                     id: s.id,
                     name: s.name,
                     classId: s.class_id
@@ -70,7 +70,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             if (data && data.length > 0) {
                 const records: { [key: string]: boolean } = {};
-                (data as any[]).forEach(row => {
+                (data as Array<{ student_id: string; present: boolean }>).forEach(row => {
                     records[row.student_id] = row.present;
                 });
 

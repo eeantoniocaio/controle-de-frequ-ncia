@@ -45,6 +45,7 @@ const SettingsPage: React.FC = () => {
             await updateClass(id, name);
             showToast('Nome da turma atualizado.');
         } catch (err: unknown) {
+            void err;
             showToast('Erro ao atualizar turma.', 'error');
         }
     };
@@ -54,6 +55,7 @@ const SettingsPage: React.FC = () => {
             await addStudentsFromCSV(classId, names);
             showToast(`${names.length} alunos importados com sucesso!`);
         } catch (err: unknown) {
+            void err;
             showToast('Erro ao importar alunos.', 'error');
         }
     };
