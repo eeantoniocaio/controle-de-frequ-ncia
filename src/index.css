@@ -389,3 +389,42 @@ select {
 .bg-pastel-purple {
   background-color: var(--accent-purple) !important;
 }
+
+/* PWA Install Prompt */
+.install-prompt-banner {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  background: white;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  z-index: 3000;
+  animation: slideUpPWA 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border-color);
+}
+
+@keyframes slideUpPWA {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 600px) {
+  .install-prompt-banner {
+    width: 400px;
+    left: 2rem;
+    right: auto;
+  }
+}
