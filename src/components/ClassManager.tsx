@@ -129,7 +129,7 @@ const ClassManager: React.FC<ClassManagerProps> = ({
                                             </div>
                                             <div className="flex gap-xs">
                                                 <button onClick={(e) => { e.stopPropagation(); setEditingClassId(cls.id); setEditName(cls.name); }} className="btn-icon text-secondary"><Pencil size={18} /></button>
-                                                <button onClick={(e) => onDeleteClass(cls.id, cls.name)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={20} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); onDeleteClass(cls.id, cls.name); }} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={20} /></button>
                                             </div>
                                         </>
                                     )}
