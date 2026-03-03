@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { X, Download, Calendar } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 
 interface ReportModalProps {
     isOpen: boolean;
