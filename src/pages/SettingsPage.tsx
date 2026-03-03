@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ClassManager from '../components/ClassManager';
+import StudentImporter from '../components/StudentImporter';
 import Toast from '../components/Toast';
 import type { ToastType } from '../components/Toast';
 
@@ -33,7 +34,8 @@ const SettingsPage: React.FC = () => {
         try {
             await addClass(name);
             showToast('Turma criada com sucesso!');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             showToast(`Erro ao criar turma: ${error.message}`, 'error');
         }
     };
@@ -42,7 +44,7 @@ const SettingsPage: React.FC = () => {
         try {
             await updateClass(id, name);
             showToast('Nome da turma atualizado.');
-        } catch (error: any) {
+        } catch (err: unknown) {
             showToast('Erro ao atualizar turma.', 'error');
         }
     };
@@ -51,7 +53,7 @@ const SettingsPage: React.FC = () => {
         try {
             await addStudentsFromCSV(classId, names);
             showToast(`${names.length} alunos importados com sucesso!`);
-        } catch (error: any) {
+        } catch (err: unknown) {
             showToast('Erro ao importar alunos.', 'error');
         }
     };

@@ -38,9 +38,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 supabase.from('students').select('*').order('name')
             ]);
 
-            if (classesData) setClasses(classesData);
+            if (classesData) setClasses(classesData as Class[]);
             if (studentsData) {
-                const mappedStudents = studentsData.map(s => ({
+                const mappedStudents = (studentsData as any[]).map(s => ({
                     id: s.id,
                     name: s.name,
                     classId: s.class_id
@@ -56,7 +56,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const fetchAttendance = useCallback(async (classId: string, date: string) => {
         // Only fetch if we don't have this specific record yet
-        const existing = attendance.find(a => a.classId === classId && a.date === date);
+        const existing = attendance.find((a: AttendanceRecord) => a.classId === classId && a.date === date);
         if (existing) return;
 
         try {
@@ -70,12 +70,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             if (data && data.length > 0) {
                 const records: { [key: string]: boolean } = {};
-                data.forEach(row => {
+                (data as any[]).forEach(row => {
                     records[row.student_id] = row.present;
                 });
 
                 const newRecord: AttendanceRecord = { classId, date, records };
-                setAttendance(prev => [...prev.filter(a => !(a.classId === classId && a.date === date)), newRecord]);
+                setAttendance(prev => [...prev.filter((a: AttendanceRecord) => !(a.classId === classId && a.date === date)), newRecord]);
             }
         } catch (error) {
             console.error('Error fetching attendance:', error);
@@ -135,7 +135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         else if (data) {
             // Map DB snake_case to frontend camelCase
             const mappedStudent: Student = { id: data.id, name: data.name, classId: data.class_id };
-            setStudents(prev => [...prev, mappedStudent]);
+            setStudents((prev: Student[]) => [...prev, mappedStudent]);
         }
     };
 
@@ -143,8 +143,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Get existing names in this class to filtered them out
         const existingNames = new Set(
             students
-                .filter(s => s.classId === classId)
-                .map(s => s.name.toLowerCase())
+                .filter((s: Student) => s.classId === classId)
+                .map((s: Student) => s.name.toLowerCase())
         );
 
         const uniqueNames = [...new Set(studentNames.map(n => n.trim()))]
@@ -179,8 +179,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const nextStatus = !currentStatus;
 
         // 2. Optimistic UI update (Immediate)
-        setAttendance(prev => {
-            const index = prev.findIndex(r => r.classId === classId && r.date === date);
+        setAttendance((prev: AttendanceRecord[]) => {
+            const index = prev.findIndex((r: AttendanceRecord) => r.classId === classId && r.date === date);
             if (index >= 0) {
                 const updated = [...prev];
                 updated[index] = {
@@ -208,8 +208,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (error) {
             console.error('Error toggling attendance:', error);
             // Rollback optimistic update if error occurs
-            setAttendance(prev => {
-                const index = prev.findIndex(r => r.classId === classId && r.date === date);
+            setAttendance((prev: AttendanceRecord[]) => {
+                const index = prev.findIndex((r: AttendanceRecord) => r.classId === classId && r.date === date);
                 if (index >= 0) {
                     const updated = [...prev];
                     updated[index] = {
@@ -231,9 +231,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { error } = await supabase.from('classes').delete().eq('id', classId);
         if (error) console.error('Error deleting class:', error);
         else {
-            setClasses(prev => prev.filter(c => c.id !== classId));
-            setStudents(prev => prev.filter(s => s.classId !== classId));
-            setAttendance(prev => prev.filter(a => a.classId !== classId));
+            setClasses((prev: Class[]) => prev.filter((c: Class) => c.id !== classId));
+            setStudents((prev: Student[]) => prev.filter((s: Student) => s.classId !== classId));
+            setAttendance((prev: AttendanceRecord[]) => prev.filter((a: AttendanceRecord) => a.classId !== classId));
         }
     };
 
@@ -241,9 +241,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { error } = await supabase.from('students').delete().eq('id', studentId);
         if (error) console.error('Error deleting student:', error);
         else {
-            setStudents(prev => prev.filter(s => s.id !== studentId));
-            setAttendance(prev => prev.map(record => {
-                const { [studentId]: _, ...rest } = record.records;
+            setStudents((prev: Student[]) => prev.filter((s: Student) => s.id !== studentId));
+            setAttendance((prev: AttendanceRecord[]) => prev.map((record: AttendanceRecord) => {
+                const { [studentId]: unused, ...rest } = record.records;
+                void unused;
                 return { ...record, records: rest };
             }));
         }
@@ -254,8 +255,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (error) console.error('Error deleting students:', error);
         else {
             const idsSet = new Set(studentIds);
-            setStudents(prev => prev.filter(s => !idsSet.has(s.id)));
-            setAttendance(prev => prev.map(record => {
+            setStudents((prev: Student[]) => prev.filter((s: Student) => !idsSet.has(s.id)));
+            setAttendance((prev: AttendanceRecord[]) => prev.map((record: AttendanceRecord) => {
                 const newRecords = { ...record.records };
                 studentIds.forEach(id => delete newRecords[id]);
                 return { ...record, records: newRecords };
@@ -276,6 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => {
     const context = useContext(AppContext);
     if (context === undefined) {
