@@ -1,121 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { ChevronLeft, Calendar as CalendarIcon, Check, X, Plus } from 'lucide-react';
+import { ChevronLeft, Calendar as CalendarIcon, Check, X } from 'lucide-react';
 
 const ClassPage: React.FC = () => {
     const { classId } = useParams<{ classId: string }>();
-    const { classes, students, attendance, getAttendanceForDate, toggleAttendance, addStudent, loading } = useAppContext();
+    const { classes, students, getAttendanceForDate, toggleAttendance, fetchAttendance, loading } = useAppContext();
 
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+    useEffect(() => {
+        if (classId && date) {
+            fetchAttendance(classId, date);
+        }
+    }, [classId, date, fetchAttendance]);
+
     if (loading) {
         return (
-            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="spinner" style={{ marginBottom: 'var(--spacing-md)' }}></div>
-                    <p style={{ color: 'var(--text-secondary)' }}>Carregando dados da turma...</p>
+            <div className="container flex items-center justify-center" style={{ height: '50vh' }}>
+                <div className="text-center">
+                    <div className="spinner mb-md"></div>
+                    <p className="text-secondary">Carregando dados da turma...</p>
                 </div>
             </div>
         );
     }
 
     const currentClass = classes.find(c => c.id === classId);
+    if (!currentClass) return <div className="container">Turma não encontrada</div>;
+
     const classStudents = students.filter(s => s.classId === classId);
     const attendanceRecord = classId ? getAttendanceForDate(classId, date) : undefined;
 
-    if (!currentClass) {
-        return <div className="container">Turma não encontrada</div>;
-    }
-
     const getStatus = (studentId: string) => {
-        // Default is PRESENT (true) if no record exists for this student on this day
         if (!attendanceRecord) return true;
         const status = attendanceRecord.records[studentId];
-        return status !== false; // If explicitly false, then absent. Undefined or true = present.
-    };
-
-    const handleExportReport = () => {
-        if (!classId) return;
-
-        // 1. Filter attendance records for this class
-        const classAttendance = attendance.filter(r => r.classId === classId);
-
-        // 2. Prepare CSV data
-        // Header
-        let csvContent = "Data,Nome do Aluno,Status\n";
-
-        // Sort by date descending
-        const sortedRecords = [...classAttendance].sort((a, b) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-
-        if (sortedRecords.length === 0) {
-            alert('Não há registros de presença para esta turma ainda.');
-            return;
-        }
-
-        // Generate rows
-        let hasAbsences = false;
-        sortedRecords.forEach(record => {
-            // Fix timezone issue by manually splitting the string
-            const [year, month, day] = record.date.split('-');
-            const recordDate = `${day}/${month}/${year}`;
-
-            classStudents.forEach(student => {
-                const isPresent = record.records[student.id] !== false; // Default true
-
-                if (!isPresent) {
-                    csvContent += `${recordDate},"${student.name}",Ausente\n`;
-                    hasAbsences = true;
-                }
-            });
-        });
-
-        if (!hasAbsences) {
-            alert('Parabéns! Nenhuma falta registrada para esta turma.');
-            return;
-        }
-
-        // 3. Trigger Download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `frequencia_ausentes_${currentClass.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        return status !== false;
     };
 
     return (
         <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '80px' }}>
-            <header className="page-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-md)' }}>
-                <Link to="/" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            <header className="page-header flex-col items-start gap-md">
+                <Link to="/" className="flex items-center text-secondary text-sm">
                     <ChevronLeft size={16} /> Voltar para Turmas
                 </Link>
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h2 className="page-title" style={{ margin: 0 }}>{currentClass.name}</h2>
-                        <button
-                            onClick={handleExportReport}
-                            className="btn"
-                            style={{
-                                padding: '6px 12px',
-                                fontSize: '0.85rem',
-                                backgroundColor: '#f1f5f9',
-                                color: '#475569',
-                                border: '1px solid #e2e8f0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
-                            title="Baixar Relatório Completo"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                            Relatório
-                        </button>
+                <div className="flex justify-between items-center w-full gap-sm flex-wrap">
+                    <div className="flex items-center gap-md">
+                        <h2 className="page-title m-0">{currentClass.name}</h2>
                     </div>
 
                     <div style={{ position: 'relative' }}>
@@ -131,25 +62,18 @@ const ClassPage: React.FC = () => {
                 </div>
             </header>
 
-            <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: 'transparent', boxShadow: 'none' }}>
+            <div className="card shadow-none bg-transparent p-0 overflow-hidden">
                 {classStudents.length === 0 ? (
-                    <div className="card" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <div className="card text-center text-secondary">
                         Nenhum aluno nesta turma ainda. Vá em Configurações para adicionar alunos.
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                    <div className="flex-col gap-sm">
                         {classStudents.map((student) => {
                             const isPresent = getStatus(student.id);
                             return (
-                                <div key={student.id} className="card" style={{
-                                    padding: 'var(--spacing-md)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    boxShadow: '0 4px 20px -5px rgba(0,0,0,0.05)',
-                                    marginBottom: 0
-                                }}>
-                                    <span style={{ fontWeight: 600, fontSize: '1rem' }}>
+                                <div key={student.id} className="card flex justify-between items-center" style={{ boxShadow: '0 4px 20px -5px rgba(0,0,0,0.05)', marginBottom: 0 }}>
+                                    <span className="font-semibold" style={{ fontSize: '1rem' }}>
                                         {student.name}
                                     </span>
 
@@ -179,28 +103,9 @@ const ClassPage: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {/* Quick Add Student Section */}
-            <div className="card" style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                <Plus size={20} color="var(--text-secondary)" />
-                <input
-                    type="text"
-                    placeholder="Adicionar novo aluno..."
-                    className="input"
-                    style={{ border: 'none', padding: '0', boxShadow: 'none', background: 'transparent' }}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            const target = e.currentTarget;
-                            if (target.value.trim()) {
-                                addStudent(classId!, target.value.trim());
-                                target.value = '';
-                            }
-                        }
-                    }}
-                />
-            </div>
         </div>
     );
 };
 
 export default ClassPage;
+

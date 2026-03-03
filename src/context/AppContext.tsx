@@ -16,6 +16,7 @@ interface AppContextType {
     deleteClass: (classId: string) => Promise<void>;
     deleteStudent: (studentId: string) => Promise<void>;
     deleteStudents: (studentIds: string[]) => Promise<void>;
+    fetchAttendance: (classId: string, date: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,17 +32,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             const [
                 { data: classesData },
-                { data: studentsData },
-                { data: attendanceData }
+                { data: studentsData }
             ] = await Promise.all([
                 supabase.from('classes').select('*').order('name'),
-                supabase.from('students').select('*').order('name'),
-                supabase.from('attendance').select('*')
+                supabase.from('students').select('*').order('name')
             ]);
 
             if (classesData) setClasses(classesData);
             if (studentsData) {
-                // Map DB snake_case to frontend camelCase
                 const mappedStudents = studentsData.map(s => ({
                     id: s.id,
                     name: s.name,
@@ -49,29 +47,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }));
                 setStudents(mappedStudents);
             }
-
-            if (attendanceData) {
-                // Group normalized DB attendance into aggregated frontend objects
-                const grouped: { [key: string]: AttendanceRecord } = {};
-                attendanceData.forEach(row => {
-                    const key = `${row.class_id}_${row.date}`;
-                    if (!grouped[key]) {
-                        grouped[key] = {
-                            date: row.date,
-                            classId: row.class_id,
-                            records: {}
-                        };
-                    }
-                    grouped[key].records[row.student_id] = row.present;
-                });
-                setAttendance(Object.values(grouped));
-            }
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Error fetching initial data:', error);
         } finally {
             setLoading(false);
         }
     }, []);
+
+    const fetchAttendance = useCallback(async (classId: string, date: string) => {
+        // Only fetch if we don't have this specific record yet
+        const existing = attendance.find(a => a.classId === classId && a.date === date);
+        if (existing) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select('*')
+                .eq('class_id', classId)
+                .eq('date', date);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                const records: { [key: string]: boolean } = {};
+                data.forEach(row => {
+                    records[row.student_id] = row.present;
+                });
+
+                const newRecord: AttendanceRecord = { classId, date, records };
+                setAttendance(prev => [...prev.filter(a => !(a.classId === classId && a.date === date)), newRecord]);
+            }
+        } catch (error) {
+            console.error('Error fetching attendance:', error);
+        }
+    }, [attendance]);
+
 
     useEffect(() => {
         fetchData();
@@ -258,7 +268,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             classes, students, attendance, loading,
             addClass, updateClass, addStudent, addStudentsFromCSV,
             toggleAttendance, getAttendanceForDate,
-            deleteClass, deleteStudent, deleteStudents
+            deleteClass, deleteStudent, deleteStudents,
+            fetchAttendance
         }}>
             {children}
         </AppContext.Provider>
