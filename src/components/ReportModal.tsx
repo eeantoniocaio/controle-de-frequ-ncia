@@ -56,12 +56,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
                 const isClassMatch = targetClassIds.includes(record.classId);
                 if (!isClassMatch) return false;
 
-                // Simple string comparison works perfectly for YYYY-MM-DD format
-                // and avoids all timezone conversion headaches
+                // The dates are already normalized to YYYY-MM-DD in the context
+                const recordDateStr = record.date;
+
                 if (dateMode === 'single') {
-                    return record.date === startDate;
+                    return recordDateStr === startDate;
                 } else {
-                    return record.date >= startDate && record.date <= endDate;
+                    return recordDateStr >= startDate && recordDateStr <= endDate;
                 }
             });
 

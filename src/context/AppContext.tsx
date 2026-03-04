@@ -109,12 +109,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const fetchAttendanceForReport = useCallback(async (classIds: string[], startDate: string, endDate: string): Promise<AttendanceRecord[]> => {
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('attendance')
                 .select('*')
-                .in('class_id', classIds)
-                .gte('date', startDate)
-                .lte('date', endDate);
+                .in('class_id', classIds);
+
+            if (startDate === endDate) {
+                query = query.eq('date', startDate);
+            } else {
+                query = query.gte('date', startDate).lte('date', endDate);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
@@ -123,9 +129,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const groupedRecords: { [key: string]: { [key: string]: boolean } } = {};
 
                 (data as Array<{ class_id: string, date: string, student_id: string, present: boolean }>).forEach(row => {
-                    const key = `${row.class_id}_${row.date}`;
+                    // Safety check and robust normalization
+                    if (!row.date) return;
+                    const normalizedDate = row.date.substring(0, 10);
+                    const classId = row.class_id.toLowerCase();
+                    const key = `${classId}_${normalizedDate}`;
+
                     if (!groupedRecords[key]) groupedRecords[key] = {};
-                    groupedRecords[key][row.student_id] = row.present;
+                    groupedRecords[key][row.student_id] = !!row.present;
                 });
 
                 const newAttendanceRecords: AttendanceRecord[] = Object.entries(groupedRecords).map(([key, records]) => {
