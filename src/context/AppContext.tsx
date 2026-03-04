@@ -28,25 +28,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [loading, setLoading] = useState(true);
 
     const sortClasses = (classesList: Class[]) => {
-        return [...classesList].sort((a, b) => {
+        const orderWeightMap: Record<string, number> = {
+            '6': 0, '7': 1, '8': 2, '9': 3,
+            '1': 4, '2': 5, '3': 6
+        };
+
+        const sorted = [...classesList].sort((a, b) => {
             const getWeight = (name: string) => {
-                const upperName = name.toUpperCase();
-                if (upperName.includes('6º') || upperName.startsWith('6')) return 0;
-                if (upperName.includes('7º') || upperName.startsWith('7')) return 1;
-                if (upperName.includes('8º') || upperName.startsWith('8')) return 2;
-                if (upperName.includes('9º') || upperName.startsWith('9')) return 3;
-                if (upperName.includes('1º') || upperName.startsWith('1')) return 4;
-                if (upperName.includes('2º') || upperName.startsWith('2')) return 5;
-                if (upperName.includes('3º') || upperName.startsWith('3')) return 6;
-                return 10; // Fallback for others
+                const match = name.match(/^(\d+)/);
+                const gradeDigit = match ? match[1] : '';
+                return orderWeightMap[gradeDigit] ?? 10;
             };
 
             const weightA = getWeight(a.name);
             const weightB = getWeight(b.name);
 
             if (weightA !== weightB) return weightA - weightB;
-            return a.name.localeCompare(b.name);
+            return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         });
+        return sorted;
     };
 
     const fetchData = useCallback(async () => {
