@@ -27,6 +27,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const sortClasses = (classesList: Class[]) => {
+        return [...classesList].sort((a, b) => {
+            const getWeight = (name: string) => {
+                const upperName = name.toUpperCase();
+                if (upperName.includes('6º') || upperName.startsWith('6')) return 0;
+                if (upperName.includes('7º') || upperName.startsWith('7')) return 1;
+                if (upperName.includes('8º') || upperName.startsWith('8')) return 2;
+                if (upperName.includes('9º') || upperName.startsWith('9')) return 3;
+                if (upperName.includes('1º') || upperName.startsWith('1')) return 4;
+                if (upperName.includes('2º') || upperName.startsWith('2')) return 5;
+                if (upperName.includes('3º') || upperName.startsWith('3')) return 6;
+                return 10; // Fallback for others
+            };
+
+            const weightA = getWeight(a.name);
+            const weightB = getWeight(b.name);
+
+            if (weightA !== weightB) return weightA - weightB;
+            return a.name.localeCompare(b.name);
+        });
+    };
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -38,7 +60,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 supabase.from('students').select('*').order('name')
             ]);
 
-            if (classesData) setClasses(classesData as Class[]);
+            if (classesData) {
+                setClasses(sortClasses(classesData as Class[]));
+            }
             if (studentsData) {
                 const mappedStudents = (studentsData as Array<{ id: string; name: string; class_id: string }>).map(s => ({
                     id: s.id,
@@ -99,7 +123,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             throw error;
         }
         else if (data) {
-            setClasses(prev => [...prev, data]);
+            setClasses(prev => sortClasses([...prev, data]));
         }
     };
 
@@ -111,7 +135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (error) console.error('Error updating class:', error);
         else {
-            setClasses(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
+            setClasses(prev => sortClasses(prev.map(c => c.id === id ? { ...c, name: newName } : c)));
         }
     };
 
