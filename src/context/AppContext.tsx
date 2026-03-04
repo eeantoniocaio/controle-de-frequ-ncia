@@ -17,6 +17,7 @@ interface AppContextType {
     deleteStudent: (studentId: string) => Promise<void>;
     deleteStudents: (studentIds: string[]) => Promise<void>;
     fetchAttendance: (classId: string, date: string) => Promise<void>;
+    fetchAttendanceForReport: (classIds: string[], startDate: string, endDate: string) => Promise<AttendanceRecord[]>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -105,6 +106,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.error('Error fetching attendance:', error);
         }
     }, [attendance]);
+
+    const fetchAttendanceForReport = useCallback(async (classIds: string[], startDate: string, endDate: string): Promise<AttendanceRecord[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select('*')
+                .in('class_id', classIds)
+                .gte('date', startDate)
+                .lte('date', endDate);
+
+            if (error) throw error;
+
+            if (data) {
+                // Group by classId and date
+                const groupedRecords: { [key: string]: { [key: string]: boolean } } = {};
+
+                (data as Array<{ class_id: string, date: string, student_id: string, present: boolean }>).forEach(row => {
+                    const key = `${row.class_id}_${row.date}`;
+                    if (!groupedRecords[key]) groupedRecords[key] = {};
+                    groupedRecords[key][row.student_id] = row.present;
+                });
+
+                const newAttendanceRecords: AttendanceRecord[] = Object.entries(groupedRecords).map(([key, records]) => {
+                    const separatorIndex = key.lastIndexOf('_');
+                    const classId = key.substring(0, separatorIndex);
+                    const date = key.substring(separatorIndex + 1);
+                    return { classId, date, records };
+                });
+
+                setAttendance(prev => {
+                    const filteredPrev = prev.filter(p => !newAttendanceRecords.some(n => n.classId === p.classId && n.date === p.date));
+                    return [...filteredPrev, ...newAttendanceRecords];
+                });
+
+                return newAttendanceRecords;
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching attendance for report:', error);
+            throw error;
+        }
+    }, []);
+
 
 
     useEffect(() => {
@@ -294,7 +338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addClass, updateClass, addStudent, addStudentsFromCSV,
             toggleAttendance, getAttendanceForDate,
             deleteClass, deleteStudent, deleteStudents,
-            fetchAttendance
+            fetchAttendance, fetchAttendanceForReport
         }}>
             {children}
         </AppContext.Provider>

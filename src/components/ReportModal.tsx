@@ -8,7 +8,7 @@ interface ReportModalProps {
 }
 
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
-    const { classes, students, attendance } = useAppContext();
+    const { classes, students, fetchAttendanceForReport } = useAppContext();
 
     // States
     const [selectedClassIds, setSelectedClassIds] = useState<Set<string>>(new Set());
@@ -16,6 +16,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
     const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [onlyAbsences, setOnlyAbsences] = useState(true);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     if (!isOpen) return null;
 
@@ -34,82 +35,92 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    const handleGenerateReport = () => {
+    const handleGenerateReport = async () => {
         if (selectedClassIds.size === 0) {
             alert('Selecione pelo menos uma turma.');
             return;
         }
 
-        let csvContent = "Data,Turma,Nome do Aluno,Status\n";
-        let hasData = false;
+        setIsGenerating(true);
+        try {
+            const targetClassIds = Array.from(selectedClassIds);
+            // Fetch data before processing
+            const fetchedAttendance = await fetchAttendanceForReport(targetClassIds, startDate, dateMode === 'single' ? startDate : endDate);
 
-        // Filter attendance records
-        const targetClassIds = Array.from(selectedClassIds);
+            let csvContent = "Data,Turma,Nome do Aluno,Status\n";
+            let hasData = false;
 
-        // Iterate through records
-        const filteredAttendance = attendance.filter(record => {
-            const isClassMatch = targetClassIds.includes(record.classId);
-            if (!isClassMatch) return false;
+            // Filter attendance records 
+            // We use the fetched data directly to avoid closure issues with context state
+            const filteredAttendance = fetchedAttendance.filter(record => {
+                const isClassMatch = targetClassIds.includes(record.classId);
+                if (!isClassMatch) return false;
 
-            // Simple string comparison works perfectly for YYYY-MM-DD format
-            // and avoids all timezone conversion headaches
-            if (dateMode === 'single') {
-                return record.date === startDate;
-            } else {
-                return record.date >= startDate && record.date <= endDate;
-            }
-        });
-
-        // Sort by date desc, then class name asc
-        filteredAttendance.sort((a, b) => {
-            const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (dateDiff !== 0) return dateDiff;
-
-            const classA = classes.find(c => c.id === a.classId)?.name || '';
-            const classB = classes.find(c => c.id === b.classId)?.name || '';
-            return classA.localeCompare(classB);
-        });
-
-        filteredAttendance.forEach(record => {
-            const classObj = classes.find(c => c.id === record.classId);
-            const className = classObj?.name || 'Desconhecida';
-
-            // Fix timezone issue
-            const [year, month, day] = record.date.split('-');
-            const recordDate = `${day}/${month}/${year}`;
-
-            // Get students for this class
-            const classStudents = students.filter(s => s.classId === record.classId);
-
-            classStudents.forEach(student => {
-                const isPresent = record.records[student.id] !== false; // Default true is present
-
-                if (onlyAbsences && isPresent) return; // Skip if we only want absences and student is present
-
-                const statusLabel = isPresent ? 'Presente' : 'Ausente';
-                csvContent += `${recordDate},"${className}","${student.name}",${statusLabel}\n`;
-                hasData = true;
+                // Simple string comparison works perfectly for YYYY-MM-DD format
+                // and avoids all timezone conversion headaches
+                if (dateMode === 'single') {
+                    return record.date === startDate;
+                } else {
+                    return record.date >= startDate && record.date <= endDate;
+                }
             });
-        });
 
-        if (!hasData) {
-            alert(onlyAbsences
-                ? 'Nenhuma falta encontrada para os filtros selecionados.'
-                : 'Nenhum registro de presença encontrado para os filtros selecionados.');
-            return;
+            // Sort by date desc, then class name asc
+            filteredAttendance.sort((a, b) => {
+                const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (dateDiff !== 0) return dateDiff;
+
+                const classA = classes.find(c => c.id === a.classId)?.name || '';
+                const classB = classes.find(c => c.id === b.classId)?.name || '';
+                return classA.localeCompare(classB);
+            });
+
+            filteredAttendance.forEach(record => {
+                const classObj = classes.find(c => c.id === record.classId);
+                const className = classObj?.name || 'Desconhecida';
+
+                // Fix timezone issue
+                const [year, month, day] = record.date.split('-');
+                const recordDate = `${day}/${month}/${year}`;
+
+                // Get students for this class
+                const classStudents = students.filter(s => s.classId === record.classId);
+
+                classStudents.forEach(student => {
+                    const isPresent = record.records[student.id] !== false; // Default true is present
+
+                    if (onlyAbsences && isPresent) return; // Skip if we only want absences and student is present
+
+                    const statusLabel = isPresent ? 'Presente' : 'Ausente';
+                    csvContent += `${recordDate},"${className}","${student.name}",${statusLabel}\n`;
+                    hasData = true;
+                });
+            });
+
+            if (!hasData) {
+                alert(onlyAbsences
+                    ? 'Nenhuma falta encontrada para os filtros selecionados.'
+                    : 'Nenhum registro de presença encontrado para os filtros selecionados.');
+                return;
+            }
+
+            // Trigger Download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `relatorio_frequencia_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setIsGenerating(false);
+            onClose();
+        } catch (error) {
+            console.error('Error generating report:', error);
+            alert('Erro ao gerar relatório. Tente novamente.');
+            setIsGenerating(false);
         }
-
-        // Trigger Download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `relatorio_frequencia_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        onClose();
     };
 
     return (
@@ -246,11 +257,32 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
 
                     <button
                         onClick={handleGenerateReport}
-                        className="btn btn-primary"
-                        style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                        className={`btn ${isGenerating ? '' : 'btn-primary'}`}
+                        disabled={isGenerating}
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            fontSize: '1rem',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '8px',
+                            opacity: isGenerating ? 0.7 : 1,
+                            cursor: isGenerating ? 'not-allowed' : 'pointer',
+                            backgroundColor: isGenerating ? '#cbd5e1' : undefined
+                        }}
                     >
-                        <Download size={20} />
-                        Baixar Relatório CSV
+                        {isGenerating ? (
+                            <>
+                                <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+                                Gerando...
+                            </>
+                        ) : (
+                            <>
+                                <Download size={20} />
+                                Baixar Relatório CSV
+                            </>
+                        )}
                     </button>
 
                 </div>
