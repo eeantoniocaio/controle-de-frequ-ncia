@@ -47,7 +47,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
             // Fetch data before processing
             const fetchedAttendance = await fetchAttendanceForReport(targetClassIds, startDate, dateMode === 'single' ? startDate : endDate);
 
-            let csvContent = "Data,Turma,Nome do Aluno,Status\n";
+            let csvContent = "Data,Turma,Nome do Aluno,Status,Total Faltas Período\n";
             let hasData = false;
 
             // Filter attendance records 
@@ -64,6 +64,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
                 } else {
                     return recordDateStr >= startDate && recordDateStr <= endDate;
                 }
+            });
+
+            // Pre-calculate total absences per student in the filtered period
+            const studentAbsencesCount: Record<string, number> = {};
+            filteredAttendance.forEach(record => {
+                Object.entries(record.records).forEach(([studentId, isPresent]) => {
+                    if (isPresent === false) { // false means absent
+                        studentAbsencesCount[studentId] = (studentAbsencesCount[studentId] || 0) + 1;
+                    }
+                });
             });
 
             // Sort by date desc, then class name asc
@@ -93,7 +103,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
                     if (onlyAbsences && isPresent) return; // Skip if we only want absences and student is present
 
                     const statusLabel = isPresent ? 'Presente' : 'Ausente';
-                    csvContent += `${recordDate},"${className}","${student.name}",${statusLabel}\n`;
+                    const totalAbsences = studentAbsencesCount[student.id] || 0;
+
+                    csvContent += `${recordDate},"${className}","${student.name}",${statusLabel},${totalAbsences}\n`;
                     hasData = true;
                 });
             });
